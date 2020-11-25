@@ -1,35 +1,32 @@
-// Type definitions for rox-browser 5.0
+// Type definitions for rox-node 4.8
 // Project: https://rollout.io
 // Definitions by: g-guirado <https://github.com/g-guirado>
-//                 rollout: <https://github.com/rollout>
 // Definitions: https://github.com/DefinitelyTyped/DefinitelyTyped
 // TypeScript Version: 3.0
 
 /**
  *
- * Official documentation for rox-browser is available here:
- * https://support.rollout.io/docs/javascript-browser-api
+ * Official documentation for rox-node is available here:
+ * https://support.rollout.io/docs/nodejs-api
  *
  */
 
 export interface RoxContainer {
-  [key: string]: Flag | RoxNumber | RoxString;
+  [key: string]: Flag | Configuration<any> | Variant;
 }
 
 /**
  * The register function should be called before the call to Rox.setup()
  *
- * https://support.rollout.io/docs/javascript-browser-api#section-register
+ * https://support.rollout.io/docs/nodejs-api#section-register
  */
 export function register(namespace: string, roxContainer: RoxContainer): void;
-
-export function register(roxContainer: RoxContainer): void;
 
 /**
  * Set Global Context.
  * You can think of Global Context as a default context
  *
- * https://support.rollout.io/docs/context#section-global-context
+ * https://support.rollout.io/docs/nodejs-api#section-setcontext
  */
 export function setContext(globalContext: unknown): void;
 
@@ -37,23 +34,21 @@ export function setContext(globalContext: unknown): void;
  * Initiate connection with Rox servers for the application identified by the application key.
  * The registered containers will be synced and Rox entities will get the appropriate values.
  *
- * https://support.rollout.io/docs/javascript-browser-api#section-setup
+ * https://support.rollout.io/docs/nodejs-api#section-setup
  */
 export function setup(apiKey: string, options?: RoxSetupOptions): Promise<unknown>;
 
 export interface RoxSetupOptions {
   version?: string;
-  // https://support.rollout.io/docs/javascript-browser-api#section-configurationfetchedhandler
+  // https://support.rollout.io/docs/configuration-fetched-handler
   configurationFetchedHandler?(fetcherResult: RoxFetcherResult): void;
   debugLevel?: 'verbose';
-  // https://support.rollout.io/docs/javascript-browser-api#section-using-the-impressionhandler-option
-  impressionHandler?(reporting: RoxReporting, context: unknown): void;
+  // https://support.rollout.io/docs/nodejs-api#section-using-the-impressionhandler-option
+  impressionHandler?(reporting: RoxReporting, experiment: RoxExperiment, context: unknown): void;
   platform?: string;
-  freeze?: RoxFlagFreezeLevel;
+  fetchIntervalInSec?: number;
   disableNetworkFetch?: boolean;
   devModeSecret?: string;
-  // https://support.rollout.io/docs/javascript-browser-api#section-dynamicPropertyRuleHandler
-  dynamicPropertyRuleHandler?(propName: string, context: any): any;
 }
 
 export enum RoxFetcherStatus {
@@ -61,13 +56,6 @@ export enum RoxFetcherStatus {
   AppliedFromCache = 'APPLIED_FROM_CACHE',
   AppliedFromNetwork = 'APPLIED_FROM_NETWORK',
   ErrorFetchFailed = 'ERROR_FETCH_FAILED'
-}
-
-export enum RoxErrorTrigger {
-  DYNAMIC_PROPERTIES_RULE = 'DYNAMIC_PROPERTIES_RULE',
-  CONFIGURATION_FETCHED_HANDLER = 'CONFIGURATION_FETCHED_HANDLER',
-  IMPRESSION_HANDLER = 'IMPRESSION_HANDLER',
-  CUSTOM_PROPERTY_GENERATOR = 'CUSTOM_PROPERTY_GENERATOR'
 }
 
 export interface RoxFetcherResult {
@@ -80,72 +68,38 @@ export interface RoxFetcherResult {
 export interface RoxReporting {
   name: string;
   value: string;
-  targeting: boolean;
+}
+
+export interface RoxExperiment {
+  identifier: string; //  experiment id
+  name: string;
+  isArchived: boolean;
+  labels: string[]; // experiment's labels. assigned from dashboard
 }
 
 /**
- * Note that you might have to call unfreeze after setting custom properties such as email after login
  * https://support.rollout.io/docs/custom-properties
  */
 export function setCustomNumberProperty(name: string, value: number | ((context?: unknown) => number)): void;
 export function setCustomStringProperty(name: string, value: string | ((context?: unknown) => string)): void;
 export function setCustomBooleanProperty(name: string, value: boolean | ((context?: unknown) => boolean)): void;
-
-// https://support.rollout.io/docs/user-space-error-handler
-export function setUserspaceUnhandledErrorHandler(
-  handler: (errorTrigger: RoxErrorTrigger, error: Error) => void
+export function setDynamicCustomPropertyRule(
+  handler: (propName: string, context: unknown) => number | string | boolean
 ): void;
-
-/**
- * Unfreeze the state of all flags in code
- * Calling this function will unfreeze all flags, and using a flag will return it’s most updated value
- *
- * https://support.rollout.io/docs/flags-update-flow#section-flag-unfreeze
- * https://support.rollout.io/docs/javascript-browser-api#section-unfreeze
- */
-export function unfreeze(namespace?: string): void;
 
 /**
  * Pulls the latest configuration and flag values down from the Rollout servers
  *
- * https://support.rollout.io/docs/javascript-browser-api#section-fetch
+ * https://support.rollout.io/docs/nodejs-api#section-fetch
  */
 export function fetch(): void;
 
 /**
- * Opens the flag override view, providing a debug UI for the application's set of feature flags.
- * https://support.rollout.io/docs/javascript-browser-api#section-showoverrides
- */
-export function showOverrides(position?: RoxOverridesPosition): void;
-
-export enum RoxOverridesPosition {
-  TopLeft = 'top left',
-  TopRight = 'top right',
-  BottomLeft = 'bottom left',
-  BottomRight = 'bottom right'
-}
-
-/**
- * Default is none
- *
- * https://support.rollout.io/docs/flags-update-flow#section-flag-freeze-level
- */
-export enum RoxFlagFreezeLevel {
-  None = 'none',
-  UntilForeground = 'untilForeground',
-  UntilLaunch = 'untilLaunch'
-}
-
-export interface RoxFlagOptions {
-  freeze?: RoxFlagFreezeLevel;
-}
-
-/**
  * Creates a new Flag
- * https://support.rollout.io/docs/javascript-browser-api#section--rox-flag-
+ * https://support.rollout.io/docs/nodejs-api#section--flag-
  */
 export class Flag {
-  constructor(defaultValue?: boolean, options?: RoxFlagOptions);
+  constructor(defaultValue?: boolean);
 
   // The name of the Flag
   readonly name: string;
@@ -155,52 +109,50 @@ export class Flag {
 
   // Returns true when the flag is enabled
   isEnabled(context?: unknown): boolean;
-
-  // Unlock the Flag value from changes from the last time it was freezed
-  unfreeze(): void;
 }
 
 /**
- * Used to create and manage Rollout feature flags that determine different predefined string values
+ * Used to create and manage Rollout feature flags that determine different predefined values
  *
- * https://support.rollout.io/docs/javascript-browser-api#section--rox-string-
+ * https://support.rollout.io/docs/nodejs-api#section--variant-
  */
-export class RoxString {
-  constructor(defaultValue: string, options?: ReadonlyArray<string>);
+export class Variant<T extends string = string> {
+  constructor(defaultValue: T, options: ReadonlyArray<T>, name?: string);
 
-  // The name of the RoxString
+  // The name of the Variant
   readonly name: string;
 
-  // Default value of the RoxString
-  readonly defaultValue: string;
+  // Default value of the Variant
+  readonly defaultValue: BasicType<T>;
 
-  // Returns the current value of the RoxString, accounting for value overrides
-  getValue(context?: unknown): string;
-
-  // Unlock the RoxString value from changes from the last time it was freezed
-  unfreeze(): void;
+  // Returns the current value of the Variant, accounting for value overrides
+  getValue(context?: unknown): BasicType<T>;
 }
 
 /**
- * Used to create and manage Rollout feature flags that determine different predefined number values
+ * manages a remote configuration setting with a value of type string, boolean, or number.
+ * The constructor sets the default value for the remote configuration setting
  *
- * https://support.rollout.io/docs/javascript-browser-api#section--rox-number-
+ * https://support.rollout.io/docs/nodejs-api#section--configuration-
  */
-export class RoxNumber {
-  constructor(defaultValue: number, options?: ReadonlyArray<number>);
+export class Configuration<T extends number | boolean | string> {
+  constructor(defaultValue: T);
 
-  // The name of the RoxNumber
+  // The name of the Configuration
   readonly name: string;
 
-  // Default value of the RoxNumber
-  readonly defaultValue: number;
+  // Default value of the Configuration
+  readonly defaultValue: BasicType<T>;
 
-  // Returns the current value of the RoxNumber, accounting for value overrides
-  getValue(context?: unknown): number;
-
-  // Unlock the RoxNumber value from changes from the last time it was freezed
-  unfreeze(): void;
+  // Returns the current value of the Configuration, accounting for value overrides
+  getValue(context?: unknown): BasicType<T>;
 }
+
+/**
+ * Ensure that TypeScript properly types things with a basic type.
+ * For example, if T is true, returnedtype shall be boolean, not true
+ */
+export type BasicType<T> = T extends boolean ? boolean : T extends number ? number : T extends string ? string : never;
 
 /**
  * Override: Should only be used for development purposes (QA - Feature dev - e2e)
@@ -209,8 +161,9 @@ export class RoxNumber {
  * the SDK will disregard existing configuration coming from the dashboard and will
  * serialize the override on disk this value will be loaded and override the flag
  * right after you call Rox.setup. To clear the override from the cache you need to
- * call the Rox.overrides.clearOverride method
+ * call the Rox.overrides.clearOverride method.
  *
+ * One can refer to the javascript-browser-api for this feature:
  * https://support.rollout.io/docs/javascript-browser-api#section--rox-overrides-
  */
 export namespace overrides {
@@ -260,14 +213,9 @@ export namespace dynamicApi {
   function isEnabled(nameSpacedFlagName: string, defaultValue: boolean, context?: unknown): boolean;
 
   /**
-   * Getting string value of a string flag
+   * Getting string value of a Variant flag
    */
   function value(nameSpacedFlagName: string, defaultValue: string, context?: unknown): string;
-
-  /**
-   * Getting string value of a number flag
-   */
-  function getNumber(nameSpacedFlagName: string, defaultValue: number, context?: unknown): number;
 }
 
 export const flags: ReadonlyArray<Flag>;
