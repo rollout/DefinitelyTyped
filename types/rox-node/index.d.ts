@@ -1,6 +1,7 @@
-// Type definitions for rox-node 4.8
+// Type definitions for rox-browser 5.0
 // Project: https://rollout.io
 // Definitions by: g-guirado <https://github.com/g-guirado>
+//                 rollout: <https://github.com/rollout>
 // Definitions: https://github.com/DefinitelyTyped/DefinitelyTyped
 // TypeScript Version: 3.0
 
@@ -12,7 +13,7 @@
  */
 
 export interface RoxContainer {
-  [key: string]: Flag | Configuration<any> | Variant;
+  [key: string]: Flag | RoxNumber | RoxString;
 }
 
 /**
@@ -21,6 +22,8 @@ export interface RoxContainer {
  * https://support.rollout.io/docs/nodejs-api#section-register
  */
 export function register(namespace: string, roxContainer: RoxContainer): void;
+
+export function register(roxContainer: RoxContainer): void;
 
 /**
  * Set Global Context.
@@ -44,11 +47,13 @@ export interface RoxSetupOptions {
   configurationFetchedHandler?(fetcherResult: RoxFetcherResult): void;
   debugLevel?: 'verbose';
   // https://support.rollout.io/docs/nodejs-api#section-using-the-impressionhandler-option
-  impressionHandler?(reporting: RoxReporting, experiment: RoxExperiment, context: unknown): void;
+  impressionHandler?(reporting: RoxReporting, context: unknown): void;
   platform?: string;
   fetchIntervalInSec?: number;
   disableNetworkFetch?: boolean;
   devModeSecret?: string;
+  // https://support.rollout.io/docs/javascript-browser-api#section-dynamicPropertyRuleHandler
+  dynamicPropertyRuleHandler?(propName: string, context: any): any;
 }
 
 export enum RoxFetcherStatus {
@@ -56,6 +61,13 @@ export enum RoxFetcherStatus {
   AppliedFromCache = 'APPLIED_FROM_CACHE',
   AppliedFromNetwork = 'APPLIED_FROM_NETWORK',
   ErrorFetchFailed = 'ERROR_FETCH_FAILED'
+}
+
+export enum RoxErrorTrigger {
+  DYNAMIC_PROPERTIES_RULE = 'DYNAMIC_PROPERTIES_RULE',
+  CONFIGURATION_FETCHED_HANDLER = 'CONFIGURATION_FETCHED_HANDLER',
+  IMPRESSION_HANDLER = 'IMPRESSION_HANDLER',
+  CUSTOM_PROPERTY_GENERATOR = 'CUSTOM_PROPERTY_GENERATOR'
 }
 
 export interface RoxFetcherResult {
@@ -68,13 +80,7 @@ export interface RoxFetcherResult {
 export interface RoxReporting {
   name: string;
   value: string;
-}
-
-export interface RoxExperiment {
-  identifier: string; //  experiment id
-  name: string;
-  isArchived: boolean;
-  labels: string[]; // experiment's labels. assigned from dashboard
+  targeting: boolean;
 }
 
 /**
@@ -83,8 +89,10 @@ export interface RoxExperiment {
 export function setCustomNumberProperty(name: string, value: number | ((context?: unknown) => number)): void;
 export function setCustomStringProperty(name: string, value: string | ((context?: unknown) => string)): void;
 export function setCustomBooleanProperty(name: string, value: boolean | ((context?: unknown) => boolean)): void;
-export function setDynamicCustomPropertyRule(
-  handler: (propName: string, context: unknown) => number | string | boolean
+
+// https://support.rollout.io/docs/user-space-error-handler
+export function setUserspaceUnhandledErrorHandler(
+  handler: (errorTrigger: RoxErrorTrigger, error: Error) => void
 ): void;
 
 /**
@@ -112,47 +120,40 @@ export class Flag {
 }
 
 /**
- * Used to create and manage Rollout feature flags that determine different predefined values
+ * Used to create and manage Rollout feature flags that determine different predefined string values
  *
- * https://support.rollout.io/docs/nodejs-api#section--variant-
+ * https://support.rollout.io/docs/nodejs-api#section--rox-string-
  */
-export class Variant<T extends string = string> {
-  constructor(defaultValue: T, options: ReadonlyArray<T>, name?: string);
+export class RoxString {
+  constructor(defaultValue: string, options?: ReadonlyArray<string>);
 
   // The name of the Variant
   readonly name: string;
 
   // Default value of the Variant
-  readonly defaultValue: BasicType<T>;
+  readonly defaultValue: string;
 
   // Returns the current value of the Variant, accounting for value overrides
-  getValue(context?: unknown): BasicType<T>;
+  getValue(context?: unknown): string;
 }
 
 /**
- * manages a remote configuration setting with a value of type string, boolean, or number.
- * The constructor sets the default value for the remote configuration setting
+ * Used to create and manage Rollout feature flags that determine different predefined number values
  *
- * https://support.rollout.io/docs/nodejs-api#section--configuration-
+ * https://support.rollout.io/docs/nodejs-api#section--rox-number-
  */
-export class Configuration<T extends number | boolean | string> {
-  constructor(defaultValue: T);
+export class RoxNumber {
+  constructor(defaultValue: number, options?: ReadonlyArray<number>);
 
-  // The name of the Configuration
+  // The name of the RoxNumber
   readonly name: string;
 
-  // Default value of the Configuration
-  readonly defaultValue: BasicType<T>;
+  // Default value of the RoxNumber
+  readonly defaultValue: number;
 
-  // Returns the current value of the Configuration, accounting for value overrides
-  getValue(context?: unknown): BasicType<T>;
+  // Returns the current value of the RoxNumber, accounting for value overrides
+  getValue(context?: unknown): number;
 }
-
-/**
- * Ensure that TypeScript properly types things with a basic type.
- * For example, if T is true, returnedtype shall be boolean, not true
- */
-export type BasicType<T> = T extends boolean ? boolean : T extends number ? number : T extends string ? string : never;
 
 /**
  * Override: Should only be used for development purposes (QA - Feature dev - e2e)
@@ -213,9 +214,14 @@ export namespace dynamicApi {
   function isEnabled(nameSpacedFlagName: string, defaultValue: boolean, context?: unknown): boolean;
 
   /**
-   * Getting string value of a Variant flag
+   * Getting string value of a string flag
    */
   function value(nameSpacedFlagName: string, defaultValue: string, context?: unknown): string;
+
+  /**
+   * Getting string value of a number flag
+   */
+  function getNumber(nameSpacedFlagName: string, defaultValue: number, context?: unknown): number;
 }
 
 export const flags: ReadonlyArray<Flag>;

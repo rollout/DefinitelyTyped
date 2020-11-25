@@ -1,9 +1,8 @@
-// Type definitions for rox-browser 5.0
+// Type definitions for rox-react-native 4.8
 // Project: https://rollout.io
 // Definitions by: ahanriat <https://github.com/ahanriat>
 //                 g-guirado <https://github.com/g-guirado>
 //                 glenna <https://github.com/glenna>
-//                 rollout <https://github.com/rollout>
 // Definitions: https://github.com/DefinitelyTyped/DefinitelyTyped
 // TypeScript Version: 3.0
 
@@ -15,7 +14,7 @@
  */
 
 export interface RoxContainer {
-    [key: string]: Flag |  RoxNumber | RoxString;
+    [key: string]: Flag | Configuration<any> | Variant;
 }
 
 /**
@@ -24,8 +23,6 @@ export interface RoxContainer {
  * https://support.rollout.io/docs/reactnative#section-register
  */
 export function register(namespace: string, roxContainer: RoxContainer): void;
-
-export function register(roxContainer: RoxContainer): void;
 
 /**
  * Initiate connection with Rox servers for the application identified by the application key.
@@ -44,15 +41,13 @@ export interface RoxSetupOptions {
     configurationFetchedHandler?(fetcherResult: RoxFetcherResult): void;
     debugLevel?: 'verbose';
     // https://support.rollout.io/docs/reactnative#section-using-the-impressionhandler-option
-    impressionHandler?(reporting: RoxReporting, context: unknown): void;
+    impressionHandler?(reporting: RoxReporting, experiment: RoxExperiment, context: unknown): void;
     platform?: string;
     freeze?: FreezeOptions;
     disableNetworkFetch?: boolean;
     devModeSecret?: string;
     // https://support.rollout.io/docs/reactnative#section--asyncstorage-
     AsyncStorage?: any; // AsyncStorage from 'react-native' package
-    // https://support.rollout.io/docs/javascript-browser-api#section-dynamicPropertyRuleHandler
-    dynamicPropertyRuleHandler?(propName: string, context: any): any;
 }
 
 export enum RoxFetcherStatus {
@@ -60,13 +55,6 @@ export enum RoxFetcherStatus {
     AppliedFromCache = 'APPLIED_FROM_CACHE',
     AppliedFromNetwork = 'APPLIED_FROM_NETWORK',
     ErrorFetchFailed = 'ERROR_FETCH_FAILED',
-}
-
-export enum RoxErrorTrigger {
-    DYNAMIC_PROPERTIES_RULE = 'DYNAMIC_PROPERTIES_RULE',
-    CONFIGURATION_FETCHED_HANDLER = 'CONFIGURATION_FETCHED_HANDLER',
-    IMPRESSION_HANDLER = 'IMPRESSION_HANDLER',
-    CUSTOM_PROPERTY_GENERATOR = 'CUSTOM_PROPERTY_GENERATOR'
 }
 
 export interface RoxFetcherResult {
@@ -79,7 +67,13 @@ export interface RoxFetcherResult {
 export interface RoxReporting {
     name: string;
     value: string;
-    targeting: boolean;
+}
+
+export interface RoxExperiment {
+    identifier: string; //  experiment id
+    name: string;
+    isArchived: boolean;
+    labels: string[]; // experiment's labels. assigned from dashboard
 }
 
 /**
@@ -98,11 +92,9 @@ export function setCustomBooleanProperty(
     name: string,
     value: boolean | (() => boolean)
 ): void;
-
-// https://support.rollout.io/docs/user-space-error-handler
-export function setUserspaceUnhandledErrorHandler(
-    handler: (errorTrigger: RoxErrorTrigger, error: Error) => void
-): void;
+export function setDynamicCustomPropertyRule(
+    handler: (propName: string, context: unknown) => number | string | boolean
+  ): void;
 
 /**
  * Unfreeze the state of all flags in code
@@ -156,46 +148,53 @@ export class Flag {
 }
 
 /**
- * Used to create and manage Rollout feature flags that determine different predefined string values
+ * Used to create and manage Rollout feature flags that determine different predefined values
  *
- * https://support.rollout.io/docs/reactnative#section--rox-string-
+ * https://support.rollout.io/docs/reactnative#section--rox-variant-
  */
-export class RoxString {
-    constructor(defaultValue: string, options?: string[]);
+export class Variant<T extends string = string> {
+    constructor(defaultValue: T, options: T[], name?: string);
 
     // The name of the Flag
     readonly name: string;
 
     // Default value of the Variant
-    readonly defaultValue: string;
+    readonly defaultValue: BasicType<T>;
 
     // Returns the current value of the Variant, accounting for value overrides
-    getValue(): string;
+    getValue(): BasicType<T>;
 
     // Unlock the Flag value from changes from the last time it was freezed
     unfreeze(): void;
 }
 
 /**
- * Used to create and manage Rollout feature flags that determine different predefined number values
+ * manages a remote configuration setting with a value of type string, boolean, or number.
+ * The constructor sets the default value for the remote configuration setting
  *
- * https://support.rollout.io/docs/reactnative#section--rox-number-
+ * https://support.rollout.io/docs/reactnative#section--rox-configuration-
  */
-export class RoxNumber {
-    constructor(defaultValue: number, options?: number[]);
+export class Configuration<T extends string | boolean | number = string> {
+    constructor(defaultValue: T);
 
-    // The name of the Flag
+    // The name of the Configuration
     readonly name: string;
 
-    // Default value of the Variant
-    readonly defaultValue: number;
+    // Default value of the Configuration
+    readonly defaultValue: BasicType<T>;
 
-    // Returns the current value of the Variant, accounting for value overrides
-    getValue(): number;
+    // Returns the current value of the Configuration, accounting for value overrides
+    getValue(): BasicType<T>;
 
-    // Unlock the Flag value from changes from the last time it was freezed
+    // Unlock the Configuration value from changes from the last time it was freezed
     unfreeze(): void;
 }
+
+/**
+ * Ensure that TypeScript properly types things with a basic type.
+ * For example, if T is true, returned type shall be boolean, not true
+ */
+export type BasicType<T> = T extends boolean ? boolean : T extends number ? number : T extends string ? string : never;
 
 /**
  * Override: Should only be used for development purposes (QA - Feature dev - e2e)
@@ -250,14 +249,9 @@ export namespace dynamicApi {
     function isEnabled(nameSpacedFlagName: string, defaultValue: boolean, context?: unknown): boolean;
 
     /**
-     * Getting string value of a string flag
+     * Getting string value of a Variant flag
      */
     function value(nameSpacedFlagName: string, defaultValue: string, context?: unknown): string;
-
-    /**
-     * Getting string value of a number flag
-     */
-    function getNumber(nameSpacedFlagName: string, defaultValue: number, context?: unknown): number;
   }
 
 export const flags: ReadonlyArray<Flag>;
